@@ -1,0 +1,96 @@
+package ua.coral.corners.service;
+
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import ua.coral.corners.pojo.*;
+
+import java.util.Collections;
+import java.util.Map;
+
+@Service
+public class ChipStepService {
+
+    private static final Logger LOG = Logger.getLogger(ChipStepService.class);
+    @Autowired
+    private MoveService moveService;
+    @Autowired
+    private ValueService valueService;
+    private Map<Coordinates, Cell> cells = Collections.emptyMap();
+    private Coordinates from;
+    private StepSpotValueList list;
+
+    public void selectPotentialCells(final Coordinates coordinates, final Map<Coordinates, Cell> cells, final StepSpotValueList list) {
+        this.from = coordinates;
+        this.cells = cells;
+        this.list = list;
+        selectPotentialCell(coordinates, -1, 0);
+        selectPotentialCell(coordinates, 1, 0);
+        selectPotentialCell(coordinates, 0, -1);
+        selectPotentialCell(coordinates, 0, 1);
+    }
+
+    void selectPotentialCell(final Coordinates coordinates, final int hStep, final int vStep) {
+        Cell cell = selectPotentialCell(coordinates.getHIndex() + hStep, coordinates.getVIndex() + vStep);
+        if (cell != null && !list.contains(getCoordinatesSpot(cell))) {
+            cell = selectPotentialCell(coordinates.getHIndex() + (hStep * 2), coordinates.getVIndex() + (vStep * 2));
+            selectNextPotentialCell(cell);
+        }
+    }
+
+    Cell selectPotentialCell(final int hIndex, final int vIndex) {
+        if (!Coordinates.isAvailable(hIndex, vIndex)) {
+            return null;
+        }
+        final Coordinates coord = Coordinates.valueOf(hIndex, vIndex);
+        final Cell cell = cells.get(coord);
+        final Cell fromCell = cells.get(from);
+        if (cell != null && cell.isEmpty() && fromCell.isChiped()) {
+            moveAndBack(cell);
+        }
+        return cell;
+    }
+
+    private void moveAndBack(Cell cell) {
+        moveService.move(cells, from, cell.getCoordinates());
+        addingSpotValueToList(cell);
+        moveService.move(cells, cell.getCoordinates(), from);
+    }
+
+    private void addingSpotValueToList(Cell cell) {
+        int value = valueService.getValue(cell.getChip().getChipType(), cells);
+        StepSpotValue spotValue = new StepSpotValue();
+        spotValue.setCells(cells);
+        spotValue.setSpot(getCoordinatesSpot(cell));
+        spotValue.setValue(value);
+        list.putIfAbsent(spotValue);
+    }
+
+    void selectNextPotentialCells(final Coordinates coordinates) {
+        selectNextPotentialCell(coordinates, -1, 0);
+        selectNextPotentialCell(coordinates, 1, 0);
+        selectNextPotentialCell(coordinates, 0, -1);
+        selectNextPotentialCell(coordinates, 0, 1);
+    }
+
+    void selectNextPotentialCell(final Coordinates coordinates, final int hStep, final int vStep) {
+        Cell cell = cells.get(Coordinates.valueOf(coordinates.getHIndex() + hStep, coordinates.getVIndex() + vStep));
+        if (cell != null && (cell.isBlack() || cell.isWhite())) {
+            cell = cells.get(Coordinates.valueOf(coordinates.getHIndex() + (hStep * 2), coordinates.getVIndex() + (vStep * 2)));
+            if (cell != null && !list.contains(getCoordinatesSpot(cell))) {
+                cell = selectPotentialCell(coordinates.getHIndex() + (hStep * 2), coordinates.getVIndex() + (vStep * 2));
+                selectNextPotentialCell(cell);
+            }
+        }
+    }
+
+    void selectNextPotentialCell(final Cell cell) {
+        if (cell != null && list.contains(getCoordinatesSpot(cell))) {
+            selectNextPotentialCells(cell.getCoordinates());
+        }
+    }
+
+    CoordinatesSpot getCoordinatesSpot(final Cell cell) {
+        return new CoordinatesSpot(from, cell.getCoordinates());
+    }
+}

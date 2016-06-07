@@ -25,7 +25,7 @@ public class StepSpotValueList {
         return stepSpotValues.size();
     }
 
-    public  StepSpotValue getMaxValue() {
+    public StepSpotValue getMaxValue() {
         OptionalInt max = stepSpotValues.stream().mapToInt(o -> o.getValue()).max();
         if (!max.isPresent()) {
             return null;
@@ -47,15 +47,13 @@ public class StepSpotValueList {
         }
 
         StepSpotValue maxSpotValue = maxValues.stream()
-                .max(((o1, o2) -> o1.getMaxValue() == null ?
-                        o1.getValue().compareTo(o2.getValue()) :
-                        o1.getMaxValue().compareTo(o2.getMaxValue()))).get();
-        stepSpotValues.stream()
-                .forEach(value -> value.setMaxValue(maxSpotValue.getMaxValue() == null ?
-                        maxSpotValue.getValue() :
-                        maxSpotValue.getMaxValue()));
+                .max((o1, o2) -> o1.getValue().compareTo(o2.getValue())).get();
 
-        return stepSpotValues.get(0);
+        return maxSpotValue;
+    }
+
+    public StepSpotValue getRootChildMaxValue() {
+        return getChildMaxValue().getRootValue();
     }
 
     public List<StepSpotValue> getStepSpotValues() {

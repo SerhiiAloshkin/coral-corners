@@ -14,5 +14,10 @@ public class Desc {
         return cells;
     }
 
-
+    @Override
+    public String toString() {
+        return "Desc{" +
+                "cells=" + cells +
+                '}';
+    }
 }

@@ -12,7 +12,7 @@ public class StepSpotValue {
     private CoordinatesSpot spot;
     private Integer value;
     private StepSpotValueList nextSpots;
-    private Integer maxValue;
+    private StepSpotValue previousValue;
 
     public Map<Coordinates, Cell> getCells() {
         return cells;
@@ -55,11 +55,25 @@ public class StepSpotValue {
         this.nextSpots = nextSpots;
     }
 
-    public Integer getMaxValue() {
-        return maxValue;
+    public StepSpotValue getPreviousValue() {
+        return previousValue;
     }
 
-    public void setMaxValue(Integer maxValue) {
-        this.maxValue = maxValue;
+    public void setPreviousValue(StepSpotValue previousValue) {
+        this.previousValue = previousValue;
+    }
+
+    public StepSpotValue getRootValue() {
+        if (previousValue.getPreviousValue() != null) {
+            return getRootValue(previousValue.getPreviousValue());
+        }
+        return previousValue;
+    }
+
+    private StepSpotValue getRootValue(StepSpotValue childSpotValue) {
+        if (childSpotValue.getPreviousValue() != null) {
+            return getRootValue(childSpotValue.getPreviousValue());
+        }
+        return childSpotValue;
     }
 }

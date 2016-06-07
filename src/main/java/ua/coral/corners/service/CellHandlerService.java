@@ -3,10 +3,8 @@ package ua.coral.corners.service;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ua.coral.corners.pojo.Cell;
-import ua.coral.corners.pojo.Coordinates;
-import ua.coral.corners.pojo.CoordinatesSpot;
-import ua.coral.corners.pojo.StepSpotValueList;
+import ua.coral.corners.pojo.*;
+import ua.coral.corners.util.DescMapUtil;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,15 +36,16 @@ public class CellHandlerService {
     }
 
     public void handle() {
-        StepSpotValueList list = new StepSpotValueList();
+        StepSpotValue spotValue = new StepSpotValue();
+        spotValue.setNextSpots(new StepSpotValueList());
         cellMap = new HashMap<>(descService.getDesc().getCells());
 
         cellMap.entrySet()
                 .stream()
                 .filter(entry -> entry.getValue().isWhite())
-                .forEach(entry -> chipStepService.selectPotentialCells(entry.getKey(), cellMap, list));
+                .forEach(entry -> chipStepService.selectPotentialCells(entry.getKey(), cellMap, spotValue));
 
-        list.getStepSpotValues()
+        spotValue.getNextSpots().getStepSpotValues()
                 .stream()
                 .forEach(value -> {
                     StepSpotValueList newList = new StepSpotValueList();
@@ -54,12 +53,12 @@ public class CellHandlerService {
                     value.getCells().entrySet()
                         .stream()
                         .filter(entry -> entry.getValue().isBlack())
-                        .forEach(entry -> {
-                            chipStepService.selectPotentialCells(entry.getKey(), value.getCells(), newList);
-                        });
+                        .forEach(entry -> chipStepService.selectPotentialCells(entry.getKey(), value.getCells(), value));
                 });
 
-        list.getStepSpotValues()
+        printResult(spotValue.getNextSpots().getChildMaxValue());
+
+        spotValue.getNextSpots().getStepSpotValues()
                 .stream()
                 .forEach(o -> o.getNextSpots().getStepSpotValues()
                         .stream()
@@ -69,12 +68,59 @@ public class CellHandlerService {
                             value.getCells().entrySet()
                                     .stream()
                                     .filter(entry -> entry.getValue().isWhite())
-                                    .forEach(entry -> {
-                                        chipStepService.selectPotentialCells(entry.getKey(), value.getCells(), newList);
-                                    });
+                                    .forEach(entry -> chipStepService.selectPotentialCells(entry.getKey(), value.getCells(), value));
                         }));
 
-        CoordinatesSpot spot = list.getChildMaxValue().getSpot();
+        printResult(spotValue.getNextSpots().getChildMaxValue());
+
+        spotValue.getNextSpots().getStepSpotValues()
+                .stream()
+                .forEach(o -> o.getNextSpots().getStepSpotValues()
+                        .stream()
+                        .forEach(subObj -> subObj.getNextSpots().getStepSpotValues()
+                                .stream()
+                                .forEach(value -> {
+                                    StepSpotValueList newList = new StepSpotValueList();
+                                    value.setNextSpots(newList);
+                                    value.getCells().entrySet()
+                                            .stream()
+                                            .filter(entry -> entry.getValue().isBlack())
+                                            .forEach(entry -> chipStepService.selectPotentialCells(entry.getKey(), value.getCells(), value));
+                                })));
+
+        printResult(spotValue.getNextSpots().getChildMaxValue());
+
+        spotValue.getNextSpots().getStepSpotValues()
+                .stream()
+                .forEach(o -> o.getNextSpots().getStepSpotValues()
+                        .stream()
+                        .forEach(subObj -> subObj.getNextSpots().getStepSpotValues()
+                                .stream()
+                                .forEach(subSubObj -> subSubObj.getNextSpots().getStepSpotValues()
+                                        .stream()
+                                        .forEach(value -> {
+                                            StepSpotValueList newList = new StepSpotValueList();
+                                            value.setNextSpots(newList);
+                                            value.getCells().entrySet()
+                                                    .stream()
+                                                    .filter(entry -> entry.getValue().isWhite())
+                                                    .forEach(entry -> chipStepService.selectPotentialCells(entry.getKey(), value.getCells(), value));
+                                        }))));
+
+        printResult(spotValue.getNextSpots().getChildMaxValue());
+
+        StepSpotValue rootChildMaxValue = spotValue.getNextSpots().getRootChildMaxValue();
+        CoordinatesSpot spot = rootChildMaxValue.getSpot();
         moveService.move(descService.getDesc().getCells(), spot.getFrom(), spot.getTo());
+    }
+
+    private void printResult(StepSpotValue childMaxValue) {
+        if (childMaxValue == null || childMaxValue.getCells() == null) {
+            return;
+        }
+        Map<Coordinates, Cell> cells = childMaxValue.getCells();
+        LOG.info(DescMapUtil.toStringAsChips(cells));
+//        LOG.info(DescMapUtil.toStringAsValue(cells));
+        printResult(childMaxValue.getPreviousValue());
     }
 }

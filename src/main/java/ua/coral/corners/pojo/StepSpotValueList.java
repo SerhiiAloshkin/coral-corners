@@ -18,7 +18,7 @@ public class StepSpotValueList {
     }
 
     public boolean contains(final CoordinatesSpot value) {
-        return stepSpotValues.stream().anyMatch(o -> o.getSpot().equals(value));
+        return stepSpotValues.stream().parallel().anyMatch(o -> o.getSpot().equals(value));
     }
 
     public int size() {

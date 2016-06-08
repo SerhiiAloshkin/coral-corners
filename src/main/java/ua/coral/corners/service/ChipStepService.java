@@ -10,6 +10,7 @@ import ua.coral.corners.pojo.StepSpotValue;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Stack;
 
 @Service
 public class ChipStepService {
@@ -27,10 +28,41 @@ public class ChipStepService {
         this.from = coordinates;
         this.cells = cells;
         this.spotValue = spotValue;
+        moveToForward();
         selectPotentialCell(coordinates, -1, 0);
         selectPotentialCell(coordinates, 1, 0);
         selectPotentialCell(coordinates, 0, -1);
         selectPotentialCell(coordinates, 0, 1);
+        moveToBack();
+    }
+
+    private void moveToForward() {
+        if (spotValue.getSpot() != null) {
+            Stack<CoordinatesSpot> spotStack = new Stack<>();
+            spotStack.push(spotValue.getSpot());
+            StepSpotValue previousValue = spotValue.getPreviousValue();
+            while (previousValue != null && previousValue.getSpot() != null) {
+                spotStack.push(previousValue.getSpot());
+                previousValue = previousValue.getPreviousValue();
+            }
+            while (!spotStack.isEmpty()) {
+                CoordinatesSpot spot = spotStack.pop();
+                moveService.move(cells, spot.getFrom(), spot.getTo());
+            }
+        }
+    }
+
+    private void moveToBack() {
+        if (spotValue.getSpot() != null) {
+            CoordinatesSpot spot = spotValue.getSpot();
+            moveService.move(cells, spot.getTo(), spot.getFrom());
+            StepSpotValue previousValue = spotValue.getPreviousValue();
+            while (previousValue != null && previousValue.getSpot() != null) {
+                spot = previousValue.getSpot();
+                moveService.move(cells, spot.getTo(), spot.getFrom());
+                previousValue = previousValue.getPreviousValue();
+            }
+        }
     }
 
     void selectPotentialCell(final Coordinates coordinates, final int hStep, final int vStep) {
@@ -63,7 +95,7 @@ public class ChipStepService {
     private void addingSpotValueToList(Cell cell) {
         int value = valueService.getValue(cell.getChip().getChipType(), cells);
         StepSpotValue spotValue = new StepSpotValue();
-        spotValue.setCells(cells);
+//        spotValue.setCells(cells);
         spotValue.setSpot(getCoordinatesSpot(cell));
         spotValue.setValue(value);
         if (this.spotValue.getValue() != null) {
@@ -97,6 +129,6 @@ public class ChipStepService {
     }
 
     CoordinatesSpot getCoordinatesSpot(final Cell cell) {
-        return new CoordinatesSpot(from, cell.getCoordinates());
+        return CoordinatesSpot.valueOf(from, cell.getCoordinates());
     }
 }
